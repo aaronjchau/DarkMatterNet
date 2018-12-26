@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+import matplotlib.pyplot as plt
 import tensorflow as tf
 import pandas as pd
 import numpy as np
@@ -119,6 +120,7 @@ def main(argv):
                 )
 
 
+
     # Call the Evaluate method to generate metrics of the trained NN on the Train Set:
     #   NOTE: Since the output layer has only 1 neuron [halo mass], the loss [mean squared error] is just the squared error
     #   NOTE: The from_dataset(train) includes .repeat() so an endpoint must be set; 2 steps = 2 batches = 2*batch_size halos
@@ -153,7 +155,7 @@ def main(argv):
 
 
 
-    # Call the Evaluate method to generate metrics of the trained NN on the Test Set ("unseen data"):
+    # Call the Evaluate method to generate metrics of the trained NN on the Test Set ("unseen data")
     test_eval_result = regressor.evaluate(
                                 input_fn=from_dataset(test),
                                 name='TEST_SET'
@@ -179,8 +181,46 @@ def main(argv):
 
 
 
-    # To call Tensorboard: 'tensorboard --logdir=...'
+    # Call the Predict method to use the trained NN to make predictions on the Test Set ("unseen data")
+    #   NOTE: The Predict method will ignore the second item (label) of the tuple (features, label)
+    test_predict_result = regressor.predict(
+                                input_fn=from_dataset(test)
+                                )
+
+    # Store the predictions as a dataframe for printing
+    test_predict_result_df = pd.DataFrame.from_dict(test_predict_result, dtype=float)
+
+
+    # Print the first 10 predictions by the NN on the Test Set
+    print("\n\nTest Set Predictions (First 10 Halos):\n")
+    print(*(list(test_predict_result_df[:10].values.flatten())),sep='\n')
+
+
+    # Print the first 10 actual values of the Test Set for comparison
+    print("\n\n\nTest Set Actual Values (First 10 Halos):\n")
+    print(*(list(test_label[:10].values.flatten())),sep='\n')
+    print("\n\n")
+
+
+
+    # Generate a plot of True Halo Mass vs Predicted Halo Mass for easier visualization
+    plt.scatter(test_label, test_predict_result_df)
+    plt.xlabel('True Values')
+    plt.ylabel('Predictions')
+    plt.axis('equal')
+    plt.axis('square')
+    plt.xlim([0,100])
+    plt.ylim([0,100])
+    _ = plt.plot([-100, 100], [-100, 100])
+    plt.show()
+
+
+
+
+
+    # EXTRA NOTE: To call Tensorboard: 'tensorboard --logdir=...'
+    # EXTRA NOTE: To turn on TensorFlow logging, uncomment the phrase below
 
 if __name__ == '__main__':
-    tf.logging.set_verbosity(tf.logging.INFO)
+    #tf.logging.set_verbosity(tf.logging.INFO)
     tf.app.run(main=main)
