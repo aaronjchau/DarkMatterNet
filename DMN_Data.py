@@ -135,7 +135,7 @@ def make_dataset(features, label=None):
 
     # If there are labels (i.e. for training data, NOT prediction data), add them as the second item
     if label is not None:
-        items.append(np.array(label, dtype=np.float32))
+        items.append(np.array(label, dtype=np.float64))
 
     # Create a TF_Dataset, where each element contains {features} and {the label} for a single halo
     return tf.data.Dataset.from_tensor_slices(tuple(items))

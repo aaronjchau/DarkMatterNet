@@ -25,14 +25,6 @@ DATA:                   Illustris_1 Simulation - Group Catalog from Snap 135
 
 
 
-# Specify features from Illustris dataset to be input to the Neural Network (NN)
-CHOSEN_FEATURES = ['SubhaloGasMetallicity',
-                    'SubhaloStellarPhotometricsMassInRad',
-                    'B1000'
-                    ]
-
-
-
 parser = argparse.ArgumentParser()
 
 # Specify batch size - number of halos fed into NN during each step
@@ -43,7 +35,7 @@ parser.add_argument('--batch_size',
 
 # Specify number of steps
 parser.add_argument('--train_steps',
-                        default=100,
+                        default=500,
                         type=int,
                         help='number of training steps')
 
@@ -67,20 +59,6 @@ def main(argv):
     (train_features, train_label), (test_features, test_label) = DMN_Data.load_data()
 
 
-    # Store mean, std dev, etc. for Train Set
-    train_stats = train_features.describe()
-    train_stats = train_stats.transpose()
-
-    def norm(x):
-        """Function which normalizes the features of datasets based on statistics from the Train Set ONLY"""
-        return (x - train_stats['mean']) / train_stats['std']
-
-    # Normalize the features of the Train Set (using Train Set stats)
-    normed_train_features = norm(train_features)
-
-    # Normalize the features of the Test Set (using Train Set stats)
-    normed_test_features = norm(test_features)
-
 
     # Use DMN_Data.make_dataset() which harnesses the tf.data.Dataset API for the Train Set input pipline:
     #   1. Takes in a pair of dataframes, Features dataframe and Label dataframe
@@ -89,7 +67,7 @@ def main(argv):
     #   4. Batch elements [halos] as they are fed into the neural network during each step
     #   5. Continue shuffling and batching elements as long as the neural network runs
     train = (DMN_Data
-                .make_dataset(normed_train_features, train_label)
+                .make_dataset(train_features, train_label)
                 .shuffle(30000)
                 .batch(args.batch_size)
                 .repeat()
@@ -99,13 +77,33 @@ def main(argv):
     # Use DMN_Data.make_dataset() which harnesses the tf.data.Dataset API for the Test Set input pipline:
     #   NOTE: The Test Set does not need to be shuffled because it will have no effect on training
     test = (DMN_Data
-                .make_dataset(normed_test_features, test_label)
+                .make_dataset(test_features, test_label)
                 .batch(args.batch_size)
             )
 
 
-    # Specify which Features should be used by the NN by defining them as TF Feature Columns
-    feature_cols = [tf.feature_column.numeric_column(key=k) for k in CHOSEN_FEATURES]
+
+    # Store mean, std dev, etc. of Train Set for normalization
+    train_stats = train_features.describe()
+
+    # Select input Features by defining them as a list of TF Feature Columns; specify normalization function based on Train Set stats
+    feature_cols = [tf.feature_column.numeric_column(
+                                        key='SubhaloGasMetallicity',
+                                        dtype=tf.float64,
+                                        normalizer_fn=lambda x: (x - train_stats.SubhaloGasMetallicity['mean'])
+                                                                    / train_stats.SubhaloGasMetallicity['std']),
+                    tf.feature_column.numeric_column(
+                                        key='SubhaloStellarPhotometricsMassInRad',
+                                        dtype=tf.float64,
+                                        normalizer_fn=lambda x: (x - train_stats.SubhaloStellarPhotometricsMassInRad['mean'])
+                                                                    / train_stats.SubhaloStellarPhotometricsMassInRad['std']),
+                    tf.feature_column.numeric_column(
+                                        key='B1000',
+                                        dtype=tf.float64,
+                                        normalizer_fn=lambda x: (x - train_stats.B1000['mean'])
+                                                                    / train_stats.B1000['std'])
+                    ]
+
 
 
     # Instantiate a high-level TF Estimator [Deep Neural Network] and define the hyperparameters:
@@ -237,5 +235,5 @@ def main(argv):
     # EXTRA NOTE: To turn on TensorFlow logging, uncomment the phrase below
 
 if __name__ == '__main__':
-    tf.logging.set_verbosity(tf.logging.INFO)
+    #tf.logging.set_verbosity(tf.logging.INFO)
     tf.app.run(main=main)
