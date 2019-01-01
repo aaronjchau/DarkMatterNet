@@ -110,12 +110,12 @@ def raw_dataframe():
 
 
 def load_data(label_name='SubhaloMassInRad', train_fraction=0.8, seed=None):
-    """Function which loads Illustris, NYU datasets; returns filtered Train & Test Set for Illustris, Predict Set for NYU"""
+    """Function which loads Illustris, NYU datasets; returns filtered Train & Test Set from Illustris, Predict Set from NYU"""
 
     # Use raw_dataframe() to load Illustris and NYU datasets
     iData, nData = raw_dataframe()
 
-    # Convert NYU stellar mass to units of 10^10 Mstar, like in Illustris
+    # NYU: Convert NYU stellar mass to units of 10^10 Mstar, like in Illustris
     nData.SubhaloStellarPhotometricsMassInRad /= (10**10)
 
     # Illustris: remove halos with stellar mass < 10^8 Mstar
@@ -124,19 +124,19 @@ def load_data(label_name='SubhaloMassInRad', train_fraction=0.8, seed=None):
     # NYU: remove halos with stellar mass < 10^8 Mstar
     nData_stell_cut = nData.drop(nData[nData.SubhaloStellarPhotometricsMassInRad < 0.01].index)
 
-    # Split Illustris dataframe randomly into a Train Set (80% of data) and a Test Set (20% of data)
+    # Illustris: Split dataframe randomly into a Train Set (80% of data) and a Test Set (20% of data)
     np.random.seed(seed)
     train_features = iData_stell_cut.sample(frac=train_fraction, random_state=seed)
     test_features = iData_stell_cut.drop(train_features.index)
 
-    # Remove Halo Mass (label) from Train and Test Set and assign to new dataframes
+    # Illustris: Store Labels (halo masses) from Train & Test Sets in new seperate dataframes
     train_label = train_features.pop(label_name)
     test_label = test_features.pop(label_name)
 
-    # Clean name
+    # NYU: Clean name for NYU dataframe
     NYU_features = nData_stell_cut
 
-    # Return a pair of dataframes (features only, label only) for Train Set, Test Set
+    # Return a pair of dataframes (features only, label only) for Train & Test Sets, single for Predict Set features
     return (train_features, train_label), (test_features, test_label), NYU_features
 
 
