@@ -141,36 +141,18 @@ def load_data(label_name='SubhaloMassInRad', train_fraction=0.8, seed=None):
 
 
 
-def make_dataset(features, label=None):
-    """Function which takes in {features} and/or {label} dataframes and returns a TF_Dataset"""
+def make_dataset(features, label):
+    """Function which takes in {features} and {label} dataframes and returns a TF Dataset"""
 
     # Make a dictionary with column names as keys and all following rows as values
     features = dict(features)
 
-    # Convert values (pd.Series) to np.arrays
-    for key in features:
-        features[key] = np.array(features[key])
-
-    # Make a list with the dict of features as the first item
-    items = [features]
-
-    # If there are labels (i.e. for training data, NOT prediction data), add them as the second item
-    if label is not None:
-        items.append(np.array(label, dtype=np.float64))
-
-    # Create a TF_Dataset, where each element contains {features} and {the label} for a single halo
-    return tf.data.Dataset.from_tensor_slices(tuple(items))
-
-
-
-def predict_input_fn(features, labels):
-    """Modified input function for compatability with new Predict method from TF.Estimator; will combine into make_dataset()"""
-    features = dict(features)
-
-    if labels is None:
-        # No labels, use only features.
+    # If there are labels (i.e. Train and Test Sets), include them in the TF Dataset
+    # If there are no labels (i.e. NYU Predict Set), do not include them in the TF Dataset
+    if label is None:
         inputs = features
     else:
-        inputs = (features, labels)
+        inputs = (features, label)
 
+    # Create a TF Dataset, where each element contains {features} and {the label} for a single halo
     return tf.data.Dataset.from_tensor_slices(inputs)
