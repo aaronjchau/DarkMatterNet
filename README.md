@@ -59,11 +59,17 @@ pip install numpy
 >regressor = tf.estimator.DNNRegressor(
 >
 >hidden_units=[4,8,4],
+>
 >feature_columns=feature_cols,
+>
 >model_dir="/path/to/the/correct/directory",
+>
 >optimizer='Adam',
+>
 >activation_fn=tf.nn.relu,
+>
 >dropout=None,
+>
 >loss_reduction=tf.losses.Reduction.SUM
 >
 >)
