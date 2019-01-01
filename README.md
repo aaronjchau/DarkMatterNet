@@ -56,23 +56,17 @@ pip install numpy
 1. Download the 2 CSV files listed in the Datasets section.
 2. Place those 2 files where the repo was cloned.
 3. In `DarkMatterNet.py`, specify the Model Directory where the TensorFlow checkpoint files should be written:
->regressor = tf.estimator.DNNRegressor(
->
->hidden_units=[4,8,4],
->
->feature_columns=feature_cols,
->
->model_dir="/path/to/the/correct/directory",
->
->optimizer='Adam',
->
->activation_fn=tf.nn.relu,
->
->dropout=None,
->
->loss_reduction=tf.losses.Reduction.SUM
->
->)
+```python
+regressor = tf.estimator.DNNRegressor(
+                      hidden_units=[4,8,4],
+                      feature_columns=feature_cols,
+                      model_dir="/Users/aaron/Documents/Research/MLprograms/DarkMatterNet/Model",
+                      optimizer='Adam',
+                      activation_fn=tf.nn.relu,
+                      dropout=None,
+                      loss_reduction=tf.losses.Reduction.SUM
+                      )
+```
 
 4. Run `DarkMatterNet.py` to initialize and train a new neural network. Performance metrics of the neural network on the Test Set will be printed. Predictions will also be generated based on the newly trained model for all galaxies in the NYU.csv file. Run the script:
 ```bash
