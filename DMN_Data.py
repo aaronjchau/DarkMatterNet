@@ -115,6 +115,9 @@ def load_data(label_name='SubhaloMassInRad', train_fraction=0.8, seed=None):
     # Use raw_dataframe() to load Illustris and NYU datasets
     iData, nData = raw_dataframe()
 
+    # Convert NYU stellar mass to units of 10^10 Mstar, like in Illustris
+    nData.SubhaloStellarPhotometricsMassInRad /= (10**10)
+
     # Illustris: remove halos with stellar mass < 10^8 Mstar
     iData_stell_cut = iData.drop(iData[iData.SubhaloStellarPhotometricsMassInRad < 0.01].index)
 
@@ -157,3 +160,17 @@ def make_dataset(features, label=None):
 
     # Create a TF_Dataset, where each element contains {features} and {the label} for a single halo
     return tf.data.Dataset.from_tensor_slices(tuple(items))
+
+
+
+def predict_input_fn(features, labels):
+    """Modified input function for compatability with new Predict method from TF.Estimator; will combine into make_dataset()"""
+    features = dict(features)
+
+    if labels is None:
+        # No labels, use only features.
+        inputs = features
+    else:
+        inputs = (features, labels)
+
+    return tf.data.Dataset.from_tensor_slices(inputs)
