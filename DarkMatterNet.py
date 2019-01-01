@@ -13,21 +13,10 @@ import os
 import DMN_Data
 
 
-"""
-INPUTS {FEATURES}:      Gas Metallicity
-                        Stellar Mass
-                        B1000
-
-OUPUT {LABEL}:          Halo Mass
-
-DATA:                   Illustris_1 Simulation - Group Catalog from Snap 135
-"""
-
-
 
 parser = argparse.ArgumentParser()
 
-# Specify batch size - number of halos fed into NN during each step
+# Specify batch size - number of halos fed into Neural Network (NN) during each step
 parser.add_argument('--batch_size',
                         default=8192,
                         type=int,
@@ -35,13 +24,14 @@ parser.add_argument('--batch_size',
 
 # Specify number of steps
 parser.add_argument('--train_steps',
-                        default=500,
+                        default=1000,
                         type=int,
                         help='number of training steps')
 
 
 
 def from_dataset(ds):
+    """An iterator which provides access to one element of the TensorFlow (TF) Dataset at a time"""
     return lambda: ds.make_one_shot_iterator().get_next()
 
 
@@ -49,14 +39,17 @@ def from_dataset(ds):
 def main(argv):
     args = parser.parse_args(argv[1:])
 
+
     # Use DMN_Data.load_data() to load Illustris data and split into Train / Test Sets:
     #   1. Reads in Illustris data [pre-processing: halos with 0 stellar mass removed; no randomization]
-    #   2. Removes halos with stellar mass < 10^8 Mstar
-    #   3. Splits Illustris data randomly into a Train Set [80%] and a Test Set [20%]
-    #   4. For Train Set and Test Set, generates a pair of dataframes: Features, Label
+    #   2. Reads in NYU data [pre-processing: halos with 0 stellar mass removed; no randomization]
+    #   3. Illustris & NYU: Removes halos with stellar mass < 10^8 Mstar
+    #   4. Illustris: Splits data randomly into a Train Set [80%] and a Test Set [20%]
+    #   5. For Train Set and Test Set, generates a pair of dataframes: Features, Label
     #           Features dataframe: includes all columns from Illustris data, except Halo Mass
     #           Label dataframe: only includes column for Halo Mass
-    (train_features, train_label), (test_features, test_label) = DMN_Data.load_data()
+    #   6. NYU: Returns dataframe of features for use as the NYU Predict Set
+    (train_features, train_label), (test_features, test_label), NYU_features = DMN_Data.load_data()
 
 
 
@@ -77,16 +70,26 @@ def main(argv):
     # Use DMN_Data.make_dataset() which harnesses the tf.data.Dataset API for the Test Set input pipline:
     #   NOTE: The Test Set does not need to be shuffled because it will have no effect on training
     test = (DMN_Data
-                .make_dataset(test_features, test_label)
-                .batch(args.batch_size)
+               .make_dataset(test_features, test_label)
+               .batch(args.batch_size)
             )
+
+
+    # Use DMN_Data.make_dataset() which harnesses the tf.data.Dataset API for the NYU Predict Set input pipline:
+    #   NOTE: The NYU Predict Set does not need to be shuffled because it will have no effect on training
+    #   NOTE: Since the NYU dataset does not include halo mass for each galaxy, labels are not included
+    predict_NYU = (DMN_Data
+                      .make_dataset(NYU_features, label=None)
+                      .batch(args.batch_size)
+                  )
 
 
 
     # Store mean, std dev, etc. of Train Set for normalization
+    # NOTE: Normalization is based only on the Train Set to ensure that the NN has no info on Test/Predict Sets
     train_stats = train_features.describe()
 
-    # Select input Features by defining them as a list of TF Feature Columns; specify normalization function based on Train Set stats
+    # Define input Features as a list of TF Feature Columns; specify normalization function based on Train Set stats
     feature_cols = [tf.feature_column.numeric_column(
                                         key='SubhaloGasMetallicity',
                                         dtype=tf.float64,
@@ -122,7 +125,7 @@ def main(argv):
                         optimizer='Adam',
                         activation_fn=tf.nn.relu,
                         dropout=None,
-                        #loss_reduction=losses.Reduction.SUM
+                        loss_reduction=tf.losses.Reduction.SUM
                         )
 
 
@@ -137,8 +140,8 @@ def main(argv):
     # Call the Evaluate method to generate metrics of the trained NN on the Train Set:
     #   NOTE: Since the output layer has only 1 neuron [halo mass], the loss [mean squared error] is just the squared error
     #   NOTE: The from_dataset(train) includes .repeat() so an endpoint must be set; 2 steps = 2 batches = 2*batch_size halos
-    #   1. Loss refers to mean loss per mini-batch [mean squared error for batch of halos]
-    #   2. Average Loss refers to the mean loss per sample [mean squared error for entire Train Set]
+    #   1. Loss refers to mean loss per mini-batch [mean squared error for a batch of halos]
+    #   2. Average Loss refers to the mean loss per sample [mean squared error for the entire Train Set]
     train_eval_result = regressor.evaluate(
                                 input_fn=from_dataset(train),
                                 steps=2,
@@ -152,18 +155,18 @@ def main(argv):
     train_rmse = math.sqrt(train_average_loss)
 
     # Print the Mean Squared Error and Root Mean Squared Error for a selection of the Train Set
-    print("\n\n\nTrain Set MSE = {0:f} \nTrain Set RMSE = {1:f} 10^10 Mstar"
+    print("\n\n\n\nTrain Set MSE = {0:f} \nTrain Set RMSE = {1:f}"
                             .format(train_average_loss, train_rmse))
 
-    # Calculate the total number of halos that were evaluated from the Train Set
-    train_eval_total = args.batch_size * 2
-
-    # Print note on total halos in the Train Set
+    # Print note on the total number of halos in the Train Set
     print("\nNOTE: Train Set has {0:d} total halos."
                             .format(train_label.shape[0]))
 
-    # Print note on number of halos evaluated from the Train Set
-    print("NOTE: MSE and RMSE were calculated for 2 batches of {0:d}, which is {1:d} halos from the Train Set.\n\n\n"
+    # Calculate the total number of halos that were evaluated from the Train Set [batch size * 2 steps]
+    train_eval_total = args.batch_size * 2
+
+    # Print note on the number of halos evaluated from the Train Set
+    print("NOTE: MSE and RMSE were calculated for 2 batches of {0:d}, which is {1:d} halos from the Train Set.\n"
                             .format(args.batch_size, train_eval_total))
 
 
@@ -181,21 +184,22 @@ def main(argv):
     test_rmse = math.sqrt(test_average_loss)
 
     # Print the Mean Squared Error of the Test Set
-    print("\n\n\nTest Set MSE = {0:f} \nTest Set RMSE = {1:f} 10^10 Mstar"
+    print("\n\nTest Set MSE = {0:f} \nTest Set RMSE = {1:f}"
                             .format(test_average_loss, test_rmse))
 
-    # Print note on total halos in the Test Set
+    # Print note on the total number of halos in the Test Set
     print("\nNOTE: Test Set has {0:d} total halos."
                             .format(test_label.shape[0]))
 
-    # Print note on number of halos evaluted from Test Set
-    print("NOTE: MSE and RMSE were calculated for all {0:d} halos from the Test Set.\n\n\n"
+    # Print note on the number of halos evaluted from Test Set
+    print("NOTE: MSE and RMSE were calculated for all {0:d} halos from the Test Set.\n\n\n\n"
                             .format(test_label.shape[0]))
+
 
 
 
     # Call the Predict method to use the trained NN to make predictions on the Test Set ("unseen data")
-    #   NOTE: The Predict method will ignore the second item (label) of the tuple (features, label)
+    #   NOTE: The Predict method will ignore the second item (label) of the list (features, label)
     test_predict_result = regressor.predict(
                                 input_fn=from_dataset(test)
                                 )
@@ -205,29 +209,58 @@ def main(argv):
 
 
     # Print the first 10 predictions by the NN on the Test Set
-    print("\n\nTest Set Predictions (First 10 Halos):\n")
+    print("\n\n\nTest Set Halo Mass Predictions of First 10 Halos (10^10 Mstar):\n")
     print(*(list(test_predict_result_df[:10].values.flatten())),sep='\n')
 
 
     # Print the first 10 actual values of the Test Set for comparison
-    print("\n\n\nTest Set Actual Values (First 10 Halos):\n")
+    print("\n\n\nTest Set Halo Mass Actual Values of First 10 Halos (10^10 Mstar):\n")
     print(*(list(test_label[:10].values.flatten())),sep='\n')
-    print("\n\n")
 
 
+    # Print the first 10 features of the Test Set
+    print("\n\n\nTest Set Features of First 10 Halos:\n")
+    print(test_features[['SubhaloGasMetallicity', 'SubhaloStellarPhotometricsMassInRad', 'B1000']].head(10))
+    print("\n\n\n")
 
-    # Generate a plot of True Halo Mass vs Predicted Halo Mass for easier visualization
+
+    # Illustris: Generate a plot of True Halo Mass vs Predicted Halo Mass for easier visualization
     plt.scatter(test_label, test_predict_result_df)
-    plt.xlabel('True Values')
-    plt.ylabel('Predictions')
+    plt.xlabel('True Halo Mass ($10^{10}$ $M_{\odot}$)')
+    plt.ylabel('Predicted Halo Mass ($10^{10}$ $M_{\odot}$)')
     plt.axis('equal')
     plt.axis('square')
-    plt.xlim([0,100])
-    plt.ylim([0,100])
-    _ = plt.plot([-100, 100], [-100, 100])
+    plt.xlim([0.1,1000])
+    plt.ylim([0.1,1000])
+    plt.xscale('log')
+    plt.yscale('log')
+    _ = plt.plot([-1000, 1000], [-1000, 1000])
     plt.show()
 
 
+
+
+    # Call the Predict method to use the trained NN to make predictions on the NYU Predict Set ("unseen data")
+    NYU_predict_result = regressor.predict(
+                                input_fn=from_dataset(predict_NYU)
+                                )
+
+    # Store the predictions as a dataframe for printing
+    NYU_predict_result_df = pd.DataFrame.from_dict(NYU_predict_result, dtype=float)
+
+    # Print note on the total number of galaxies in the NYU Predict Set
+    print("\n\n\n\nNOTE: NYU Predict Set has {0:d} total galaxies.\n"
+                            .format(NYU_features.shape[0]))
+
+    # Print the first 10 predictions by the NN on the Test Set
+    print("\n\nNYU Halo Mass Predictions of First 10 Galaxies (10^10 Mstar):\n")
+    print(*(list(NYU_predict_result_df[:10].values.flatten())),sep='\n')
+
+
+    # Print the first 10 features of the NYU Set
+    print("\n\n\nNYU Features of First 10 Galaxies:\n")
+    print(NYU_features[['SubhaloGasMetallicity', 'SubhaloStellarPhotometricsMassInRad', 'B1000']].head(10))
+    print("\n\n")
 
 
 
