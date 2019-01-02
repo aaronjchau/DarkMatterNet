@@ -141,3 +141,4 @@ NYU Set: Sample # | Gas Metallicity | Stellar Mass (10<sup>10</sup> M⊙) | B100
 
 
 ### True vs Predicted  Plot
+![Best Model Ture vs Predicted Plot](https://imgur.com/foGXEpc.png)
