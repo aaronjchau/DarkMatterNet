@@ -99,8 +99,8 @@ The hyperparameters of a neural network are highly sensitive to the data and are
   * *BEST: none*
 
 ###### Batch Sizes
-* Tried 1024, 2048, 4096, 8192, 16384
-* *BEST: 8192*
+* Tried 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384
+* *BEST: 4096*
 
 
 
@@ -143,4 +143,4 @@ NYU Set: Sample # | Gas Metallicity | Stellar Mass (10<sup>10</sup> M⊙) | B100
 ### True vs Predicted  Plot
 The plot below helps to visualize where DarkMatterNet struggles with predictions (lower mass halos) and where DarkMatterNet has more success (higher mass halos). The plot contains all the predictions for the Evaluation (Test) Set.   
 
-![Best Model Ture vs Predicted Plot](https://imgur.com/foGXEpc.png)
+![Best Model Ture vs Predicted Plot](https://imgur.com/lpOE2o1.png)
