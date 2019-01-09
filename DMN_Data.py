@@ -81,7 +81,7 @@ ILLUSTRIS_COLUMN_NAMES = ['Pre_Drop_Index',
 # [Reminder] List of column names assigned when the NYU dataset is loaded
 # NOTE: NYU column names must match Illustris column names
 NYU_COLUMN_NAMES = ['Pre_Drop_Index',
-                    'SubhaloStellarPhotometricsMassInRad',
+                    'SubhaloMassInRadType4',
                     'SubhaloGasMetallicity',
                     'B300',
                     'B1000']
@@ -91,9 +91,10 @@ NYU_COLUMN_NAMES = ['Pre_Drop_Index',
 def raw_dataframe():
     """Function which loads Illustris and NYU datasets"""
 
-    # Load data from Illustris_V2.csv and reassign column names
-    #   NOTE: Illustris_V2.csv pre-filtering: halos with 0 stellar mass (PhotometricsMassInRad) were dropped
-    iDF = pd.read_csv("Illustris_V2.csv",
+    # Load data from Illustris_V3.csv and reassign column names
+    #   NOTE: Illustris_V3.csv pre-filtering: halos with 0 stellar mass (SubhaloMassInRadType4) were dropped
+    #   NOTE: Illustris_V3.csv pre-filtering was done to reduce the size of CSV
+    iDF = pd.read_csv("Illustris_V3.csv",
                         header=0,
                         names=ILLUSTRIS_COLUMN_NAMES,
                         dtype=np.float64)
@@ -116,18 +117,24 @@ def load_data(label_name='SubhaloMassInRad', train_fraction=0.8, seed=None):
     iData, nData = raw_dataframe()
 
     # NYU: Convert NYU stellar mass to units of 10^10 Mstar, like in Illustris
-    nData.SubhaloStellarPhotometricsMassInRad /= (10**10)
+    nData.SubhaloMassInRadType4 /= (10**10)
 
-    # Illustris: remove halos with stellar mass < 10^8 Mstar
-    iData_stell_cut = iData.drop(iData[iData.SubhaloStellarPhotometricsMassInRad < 0.01].index)
+    # Illustris: Correct Particle Type 4 to only include stellar mass and no wind mass
+    iData.SubhaloMassInRadType4 -= iData.SubhaloWindMass
+
+    # Illustris: Extra check for no halos with 0 stellar mass
+    iData_stell_cut = iData.drop(iData[iData.SubhaloMassInRadType4 == 0].index)
+
+    # Illustris: remove halos with halo mass < 10^9 Mstar
+    iData_halo_cut = iData_stell_cut.drop(iData_stell_cut[iData_stell_cut.SubhaloMassInRad < 0.1].index)
 
     # NYU: remove halos with stellar mass < 10^8 Mstar
-    nData_stell_cut = nData.drop(nData[nData.SubhaloStellarPhotometricsMassInRad < 0.01].index)
+    nData_stell_cut = nData.drop(nData[nData.SubhaloMassInRadType4 < 0.01].index)
 
     # Illustris: Split dataframe randomly into a Train Set (80% of data) and a Test Set (20% of data)
     np.random.seed(seed)
-    train_features = iData_stell_cut.sample(frac=train_fraction, random_state=seed)
-    test_features = iData_stell_cut.drop(train_features.index)
+    train_features = iData_halo_cut.sample(frac=train_fraction, random_state=seed)
+    test_features = iData_halo_cut.drop(train_features.index)
 
     # Illustris: Store Labels (halo masses) from Train & Test Sets in new seperate dataframes
     train_label = train_features.pop(label_name)
