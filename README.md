@@ -143,4 +143,4 @@ NYU Set: Sample # | Gas Metallicity | Stellar Mass (10<sup>10</sup> M⊙) | B100
 ### True vs Predicted  Plot
 The plot below helps to visualize where DarkMatterNet struggles with predictions (lower mass halos) and where DarkMatterNet has more success (higher mass halos). The plot contains all the predictions for the Evaluation (Test) Set.   
 
-![Best Model True vs Predicted Plot](https://imgur.com/Vv69la9.png)
+![Best Model True vs Predicted Plot](https://imgur.com/R0bkEWG.png)
