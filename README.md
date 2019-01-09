@@ -58,11 +58,11 @@ pip install numpy==1.14.0
 3. In `DarkMatterNet.py`, specify the Model Directory where the TensorFlow checkpoint files should be written:
 ```python
 regressor = tf.estimator.DNNRegressor(
-                      hidden_units=[10,10],
+                      hidden_units=[6,9,3],
                       feature_columns=feature_cols,
                       model_dir="/path/to/the/chosen/directory",
                       optimizer='Adam',
-                      activation_fn=tf.nn.relu,
+                      activation_fn=tf.nn.elu,
                       dropout=None,
                       loss_reduction=tf.losses.Reduction.SUM
                       )
@@ -92,7 +92,7 @@ The hyperparameters of a neural network are highly sensitive to the data and are
 
 ###### Activation Functions
   * Tried RELU, ELU, SELU, Sigmoid, tanH functions
-  * *BEST: RELU (Rectified Linear Unit)*
+  * *BEST: ELU (Exponential Linear Unit)*
 
 ###### Dropout
   * Tried none, 0.01, 0.1, 0.2, 0.5, 0.6
@@ -100,7 +100,7 @@ The hyperparameters of a neural network are highly sensitive to the data and are
 
 ###### Batch Sizes
 * Tried 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384
-* *BEST: 16384*
+* *BEST: 8192*
 
 
 
