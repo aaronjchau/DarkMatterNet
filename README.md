@@ -10,9 +10,9 @@
 * Dark Matter Halo Mass
 
 #### Training Data: Illustris Simulation
-* 22,070 dark matter halos, all with stellar mass > 10<sup>8</sup> M⊙
-  * ~18,000 for training
-  * ~4,000 for evaluation
+* 180,665 dark matter halos, all with stellar mass > 10<sup>8</sup> M⊙
+  * ~144,532 for training
+  * ~36,133 for evaluation
 
 #### Prediction Data: NYU Value-Added Galaxy Catalogue
 * 1,002,145 galaxies, all with stellar mass > 10<sup>8</sup> M⊙
@@ -21,7 +21,7 @@
 ## Datasets
 For the training and evaluation of DarkMatterNet, we obtained the data on dark matter halos from Illustris-1. Gas Metallicity and Stellar Mass were obtained from Snapshot 135 (z=0). B1000 was obtained from Snapshots 129-135. The compiled data can be accessed and downloaded with a UCI Google Account.
 
-[Illustris_V2.csv](https://drive.google.com/a/uci.edu/file/d/1gg0eeuadNAWKssdDmyB84M4uXk9Igo0i/view?usp=sharing) | [Source](http://www.illustris-project.org/data/downloads/Illustris-1/)
+[Illustris_V3.csv](https://drive.google.com/open?id=1C2dtS4Xyrns-HO19yuOf_H5tiAKF8Ch3) | [Source](http://www.illustris-project.org/data/downloads/Illustris-1/)
 
 To test the predictive ability of DarkMatterNet, we used galaxies from the NYU Value-Added Galaxy Catalogue (collision_type: none, flux_type: SDSS model magnitudes, band_shift: 0). These K-Corrections included Gas Metallicity, Stellar Mass, and B1000. The dataset can be accessed and downloaded with a UCI Google Account.
 
@@ -46,10 +46,10 @@ cd DarkMatterNet
 ```
 5. Install necessary dependencies (assuming Python 2.7):
 ```bash
-pip install tensorflow
-pip install matplotlib
-pip install pandas
-pip install numpy
+pip install tensorflow==1.12.0
+pip install matplotlib==2.2.3
+pip install pandas==0.21.0
+pip install numpy==1.14.0
 ```
 
 ## Training, Testing, and Predicting
@@ -58,7 +58,7 @@ pip install numpy
 3. In `DarkMatterNet.py`, specify the Model Directory where the TensorFlow checkpoint files should be written:
 ```python
 regressor = tf.estimator.DNNRegressor(
-                      hidden_units=[4,8,4],
+                      hidden_units=[10,10],
                       feature_columns=feature_cols,
                       model_dir="/path/to/the/chosen/directory",
                       optimizer='Adam',
@@ -81,8 +81,8 @@ python DarkMatterNet.py
 The hyperparameters of a neural network are highly sensitive to the data and are not able to be determined through a formula. The optimal hyperparameter values are determined through trials of random configurations. The "best" hyperparameters result in a neural network which has the lowest Mean Squared Error (MSE) for the Train Set and a similar MSE for the Evaluation Set. If the Evaluation MSE is significantly higher than the Train MSE, the neural network is overfitting. Here are the hyperparameters we tuned:  
 
 ###### Hidden Layer Architectures
-  * Tried 2, 3, 4 layers
-  * Tried various combinations of layers with 3, 4, 5, 6, 7, 8 neurons
+  * Tried 2, 3, 4, 5 layers
+  * Tried various combinations of layers with 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 100 neurons
   * All layers fully connected
   * *BEST: 3 layers of 8, 8, 4 neurons*
 
@@ -100,7 +100,7 @@ The hyperparameters of a neural network are highly sensitive to the data and are
 
 ###### Batch Sizes
 * Tried 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384
-* *BEST: 4096*
+* *BEST: 8192*
 
 
 
