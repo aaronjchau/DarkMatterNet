@@ -122,14 +122,19 @@ def load_data(label_name='SubhaloMassInRad', train_fraction=0.8, seed=None):
     # Illustris: Correct Particle Type 4 to only include stellar mass and no wind mass
     iData.SubhaloMassInRadType4 -= iData.SubhaloWindMass
 
-    # Illustris: Extra check for no halos with 0 stellar mass
-    iData_stell_cut = iData.drop(iData[iData.SubhaloMassInRadType4 == 0].index)
+    # Illustris: Make sure all halos havve positive stellar mass
+    iData_stell_cut = iData.drop(iData[iData.SubhaloMassInRadType4 < 0].index)
 
     # Illustris: remove halos with halo mass < 10^9 Mstar
     iData_halo_cut = iData_stell_cut.drop(iData_stell_cut[iData_stell_cut.SubhaloMassInRad < 0.1].index)
 
-    # NYU: remove halos with stellar mass < 10^8 Mstar
-    nData_stell_cut = nData.drop(nData[nData.SubhaloMassInRadType4 < 0.01].index)
+    # NYU: remove halos with stellar mass < 10^4 Mstar
+    #   NOTE: The Illustris dataset has no halos with stellar mass < 10^4; prediction data must be within trainin data
+    nData_stell_cut = nData.drop(nData[nData.SubhaloMassInRadType4 < 0.0000001].index)
+
+    # NYU: remove halos with stellar mass > 1.5 * 10^12 make_one_shot_iterator
+    #   NOTE: The Illustris dataset has no halos above 1.5*10^12; prediction data must be within training data
+    nData_stell_top_cut = nData_stell_cut.drop(nData_stell_cut[nData_stell_cut.SubhaloMassInRadType4 >= 150].index)
 
     # Illustris: Split dataframe randomly into a Train Set (80% of data) and a Test Set (20% of data)
     np.random.seed(seed)
@@ -141,7 +146,7 @@ def load_data(label_name='SubhaloMassInRad', train_fraction=0.8, seed=None):
     test_label = test_features.pop(label_name)
 
     # NYU: Clean name for NYU dataframe
-    NYU_features = nData_stell_cut
+    NYU_features = nData_stell_top_cut
 
     # Return a pair of dataframes (features only, label only) for Train & Test Sets, single for Predict Set features
     return (train_features, train_label), (test_features, test_label), NYU_features
