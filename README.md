@@ -1,5 +1,5 @@
 # DarkMatterNet
-"DarkMatterNet" is a neural network which predicts the mass of dark matter surrounding a galaxy when given data on three observable features of that galaxy. DarkMatterNet was trained on data from the Illustris-1 Hydrodynamical simulation. After tuning the hyperparameters to ensure our model was robust, we used DarkMatterNet to predict the dark matter mass of the galaxies (with stellar mass > 10<sup>8</sup> M⊙) in the NYU Value-Added Catalogue.
+"DarkMatterNet" is a neural network which predicts the mass of dark matter surrounding a galaxy when given data on three observable features of that galaxy. DarkMatterNet was trained on data from the Illustris-1 Hydrodynamical simulation. After tuning the hyperparameters to ensure our model was robust, we used DarkMatterNet to predict the dark matter mass of the galaxies in the NYU Value-Added Catalogue.
 
 #### Input Features
 * Gas Metallicity
@@ -10,7 +10,7 @@
 * Dark Matter Halo Mass
 
 #### Training Data: Illustris Simulation
-* 180,665 dark matter halos, all with stellar mass > 10<sup>8</sup> M⊙
+* 180,665 dark matter halos, all with halo mass > 10<sup>9</sup> M⊙ & stellar mass > 0
   * ~144,532 for training
   * ~36,133 for evaluation
 
