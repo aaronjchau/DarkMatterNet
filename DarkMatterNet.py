@@ -5,10 +5,8 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import pandas as pd
 import numpy as np
-import itertools
 import argparse
 import math
-import os
 
 import DMN_Data
 
@@ -24,7 +22,7 @@ parser.add_argument('--batch_size',
 
 # Specify number of steps
 parser.add_argument('--train_steps',
-                        default=1000,
+                        default=500,
                         type=int,
                         help='number of training steps')
 
@@ -61,7 +59,7 @@ def main(argv):
     #   5. Continue shuffling and batching elements as long as the neural network runs
     train = (DMN_Data
                 .make_dataset(train_features, train_label)
-                .shuffle(30000)
+                .shuffle(150000)
                 .batch(args.batch_size)
                 .repeat()
             )
@@ -96,10 +94,10 @@ def main(argv):
                                         normalizer_fn=lambda x: (x - train_stats.SubhaloGasMetallicity['mean'])
                                                                     / train_stats.SubhaloGasMetallicity['std']),
                     tf.feature_column.numeric_column(
-                                        key='SubhaloStellarPhotometricsMassInRad',
+                                        key='SubhaloMassInRadType4',
                                         dtype=tf.float64,
-                                        normalizer_fn=lambda x: (x - train_stats.SubhaloStellarPhotometricsMassInRad['mean'])
-                                                                    / train_stats.SubhaloStellarPhotometricsMassInRad['std']),
+                                        normalizer_fn=lambda x: (x - train_stats.SubhaloMassInRadType4['mean'])
+                                                                    / train_stats.SubhaloMassInRadType4['std']),
                     tf.feature_column.numeric_column(
                                         key='B1000',
                                         dtype=tf.float64,
@@ -119,7 +117,7 @@ def main(argv):
     #   6. Dropout refers to the probability that a given coordinate will be removed
     #   7. Loss Reduction describes how to reduce training loss over the batch, by minimizing scalar sum of weighted losses
     regressor = tf.estimator.DNNRegressor(
-                        hidden_units=[4,8,4],
+                        hidden_units=[10,10],
                         feature_columns=feature_cols,
                         model_dir="...",
                         optimizer='Adam',
@@ -135,7 +133,10 @@ def main(argv):
                 steps=args.train_steps
                 )
 
-
+    # Calculate how many times a batch must be fed into the NN to read the majority of the Train Set
+    #   NOTE: The make_dataset() function for the Train Set contains the .repeat() function
+    #   NOTE: Specific steps must be specified to prevent nonstop evaluation of Train Set
+    num_steps = int((train_label.shape[0]) // (args.batch_size))
 
     # Call the Evaluate method to generate metrics of the trained NN on the Train Set:
     #   NOTE: Since the output layer has only 1 neuron [halo mass], the loss [mean squared error] is just the squared error
@@ -144,7 +145,7 @@ def main(argv):
     #   2. Average Loss refers to the mean loss per sample [mean squared error for the entire Train Set]
     train_eval_result = regressor.evaluate(
                                 input_fn=from_dataset(train),
-                                steps=2,
+                                steps=num_steps,
                                 name='TRAIN_SET'
                                 )
 
@@ -162,12 +163,13 @@ def main(argv):
     print("\nNOTE: Train Set has {0:d} total halos."
                             .format(train_label.shape[0]))
 
-    # Calculate the total number of halos that were evaluated from the Train Set [batch size * 2 steps]
-    train_eval_total = args.batch_size * 2
+    # Calculate the total number of halos that were evaluated from the Train Set [batch size * # of steps]
+    #   NOTE: it is better to not evaluate the entire Train Set than evaluate some halos multiple times
+    train_eval_total = args.batch_size * num_steps
 
     # Print note on the number of halos evaluated from the Train Set
-    print("NOTE: MSE and RMSE were calculated for 2 batches of {0:d}, which is {1:d} halos from the Train Set.\n"
-                            .format(args.batch_size, train_eval_total))
+    print("NOTE: MSE and RMSE were calculated for {0:d} batches of {1:d}, which is {2:d} halos from the Train Set.\n"
+                            .format(num_steps, args.batch_size, train_eval_total))
 
 
 
@@ -220,21 +222,23 @@ def main(argv):
 
     # Print the first 10 features of the Test Set
     print("\n\n\nTest Set Features of First 10 Halos:\n")
-    print(test_features[['SubhaloGasMetallicity', 'SubhaloStellarPhotometricsMassInRad', 'B1000']].head(10))
+    print(test_features[['SubhaloGasMetallicity', 'SubhaloMassInRadType4', 'B1000']].head(10))
     print("\n\n\n")
 
 
     # Illustris: Generate a plot of True Halo Mass vs Predicted Halo Mass for easier visualization
+    plt.figure(dpi=120)
+    plt.title('True vs Predicted: Test Set')
     plt.scatter(test_label, test_predict_result_df)
     plt.xlabel('True Halo Mass ($10^{10}$ $M_{\odot}$)')
     plt.ylabel('Predicted Halo Mass ($10^{10}$ $M_{\odot}$)')
     plt.axis('equal')
     plt.axis('square')
-    plt.xlim([0.1,1000])
-    plt.ylim([0.1,1000])
+    plt.xlim([0.1,2000])
+    plt.ylim([0.1,2000])
     plt.xscale('log')
     plt.yscale('log')
-    _ = plt.plot([-1000, 1000], [-1000, 1000])
+    _ = plt.plot([-1000, 2000], [-1000, 2000])
     plt.show()
 
 
@@ -259,8 +263,22 @@ def main(argv):
 
     # Print the first 10 features of the NYU Set
     print("\n\n\nNYU Features of First 10 Galaxies:\n")
-    print(NYU_features[['SubhaloGasMetallicity', 'SubhaloStellarPhotometricsMassInRad', 'B1000']].head(10))
+    print(NYU_features[['SubhaloGasMetallicity', 'SubhaloMassInRadType4', 'B1000']].head(10))
     print("\n\n")
+
+
+    # NYU: Generate SHMR plot
+    plt.figure(dpi=120)
+    plt.title('Predicted Halo Mass vs Stellar Mass: NYU Set')
+    plt.scatter(NYU_predict_result_df, NYU_features['SubhaloMassInRadType4'])
+    plt.xlabel('Predicted Halo Mass ($10^{10}$ $M_{\odot}$/$h$)')
+    plt.ylabel('Stellar Mass ($10^{10}$ $M_{\odot}$/$h$)')
+    plt.axis('square')
+    plt.xlim(10**-0.5, 10**5.5)
+    plt.ylim(10**-2.5, 10**3.4)
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.show()
 
 
 
